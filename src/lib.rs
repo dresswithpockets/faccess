@@ -508,6 +508,12 @@ impl PathExt for Path {
     }
 }
 
+impl<P> PathExt for P where P: AsRef<Path> {
+    fn access(&self, mode: AccessMode) -> std::io::Result<()> {
+        imp::access(self.as_ref(), mode)
+    }
+}
+
 #[test]
 fn amazing_test_suite() {
     let cargotoml = Path::new("Cargo.toml");
