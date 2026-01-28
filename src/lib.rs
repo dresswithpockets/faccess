@@ -477,12 +477,6 @@ pub trait PathExt {
     }
 }
 
-impl PathExt for Path {
-    fn access(&self, mode: AccessMode) -> io::Result<()> {
-        imp::access(self, mode)
-    }
-}
-
 impl<P> PathExt for P
 where
     P: AsRef<Path>,
