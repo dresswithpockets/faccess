@@ -138,15 +138,14 @@ mod imp {
     use winapi::um::handleapi::CloseHandle;
     use winapi::um::processthreadsapi::{GetCurrentThread, OpenThreadToken};
     use winapi::um::securitybaseapi::{
-        AccessCheck, GetSidIdentifierAuthority, ImpersonateSelf, IsValidSid, MapGenericMask,
-        RevertToSelf,
+        AccessCheck, GetSidIdentifierAuthority, ImpersonateSelf, IsValidSid, MapGenericMask, RevertToSelf,
     };
     use winapi::um::winbase::LocalFree;
     use winapi::um::winnt::{
-        SecurityImpersonation, DACL_SECURITY_INFORMATION, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE,
-        FILE_GENERIC_READ, FILE_GENERIC_WRITE, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, HANDLE,
-        LABEL_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION, PACL, PRIVILEGE_SET,
-        PSECURITY_DESCRIPTOR, PSID, SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
+        SecurityImpersonation, DACL_SECURITY_INFORMATION, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
+        FILE_GENERIC_WRITE, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, HANDLE, LABEL_SECURITY_INFORMATION,
+        OWNER_SECURITY_INFORMATION, PACL, PRIVILEGE_SET, PSECURITY_DESCRIPTOR, PSID, SID_IDENTIFIER_AUTHORITY,
+        TOKEN_DUPLICATE, TOKEN_QUERY,
     };
 
     struct SecurityDescriptor {
@@ -233,12 +232,7 @@ mod imp {
                 }
 
                 let mut token: HANDLE = std::ptr::null_mut();
-                let err = OpenThreadToken(
-                    GetCurrentThread(),
-                    TOKEN_DUPLICATE | TOKEN_QUERY,
-                    0,
-                    &mut token,
-                );
+                let err = OpenThreadToken(GetCurrentThread(), TOKEN_DUPLICATE | TOKEN_QUERY, 0, &mut token);
 
                 RevertToSelf();
 
@@ -263,10 +257,7 @@ mod imp {
         if !md.is_dir() {
             // Read Only is ignored for directories
             if mode & FILE_GENERIC_WRITE == FILE_GENERIC_WRITE && md.permissions().readonly() {
-                return Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "File is read only",
-                ));
+                return Err(io::Error::new(io::ErrorKind::PermissionDenied, "File is read only"));
             }
 
             // If it doesn't have the correct extension it isn't executable
@@ -274,20 +265,12 @@ mod imp {
                 if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
                     match ext {
                         "exe" | "com" | "bat" | "cmd" => (),
-                        _ => {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "File not executable",
-                            ))
-                        }
+                        _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "File not executable")),
                     }
                 }
             }
 
-            return std::fs::OpenOptions::new()
-                .access_mode(mode)
-                .open(p)
-                .map(|_| ());
+            return std::fs::OpenOptions::new().access_mode(mode).open(p).map(|_| ());
         }
 
         let sd = SecurityDescriptor::for_path(p)?;
@@ -299,9 +282,7 @@ mod imp {
         };
         unsafe {
             let owner = sd.as_owner();
-            if IsValidSid(*owner) != 0
-                && (*GetSidIdentifierAuthority(*owner)).Value == SAMBA_UNMAPPED.Value
-            {
+            if IsValidSid(*owner) != 0 && (*GetSidIdentifierAuthority(*owner)).Value == SAMBA_UNMAPPED.Value {
                 return Ok(());
             }
         }
@@ -335,10 +316,7 @@ mod imp {
             ) != 0
         } {
             if result == 0 {
-                Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "Permission Denied",
-                ))
+                Err(io::Error::new(io::ErrorKind::PermissionDenied, "Permission Denied"))
             } else {
                 Ok(())
             }
@@ -381,10 +359,7 @@ mod imp {
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
         if mode.contains(AccessMode::WRITE) {
             if std::fs::metadata(p)?.permissions().readonly() {
-                return Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "Path is read only",
-                ));
+                return Err(io::Error::new(io::ErrorKind::PermissionDenied, "Path is read only"));
             } else {
                 return Ok(());
             }
@@ -508,7 +483,10 @@ impl PathExt for Path {
     }
 }
 
-impl<P> PathExt for P where P: AsRef<Path> {
+impl<P> PathExt for P
+where
+    P: AsRef<Path>,
+{
     fn access(&self, mode: AccessMode) -> std::io::Result<()> {
         imp::access(self.as_ref(), mode)
     }
@@ -520,9 +498,7 @@ fn amazing_test_suite() {
 
     assert!(cargotoml.access(AccessMode::EXISTS).is_ok());
     assert!(cargotoml.access(AccessMode::READ).is_ok());
-    assert!(cargotoml
-        .access(AccessMode::READ | AccessMode::WRITE)
-        .is_ok());
+    assert!(cargotoml.access(AccessMode::READ | AccessMode::WRITE).is_ok());
 
     assert!(cargotoml.readable());
     assert!(cargotoml.writable());
@@ -530,9 +506,7 @@ fn amazing_test_suite() {
     #[cfg(unix)]
     {
         assert!(!cargotoml.executable());
-        assert!(cargotoml
-            .access(AccessMode::READ | AccessMode::EXECUTE)
-            .is_err());
+        assert!(cargotoml.access(AccessMode::READ | AccessMode::EXECUTE).is_err());
 
         let sh = Path::new("/bin/sh");
         assert!(sh.readable());
@@ -546,9 +520,7 @@ fn amazing_test_suite() {
     #[cfg(windows)]
     {
         assert!(!cargotoml.executable());
-        assert!(cargotoml
-            .access(AccessMode::READ | AccessMode::EXECUTE)
-            .is_err());
+        assert!(cargotoml.access(AccessMode::READ | AccessMode::EXECUTE).is_err());
 
         let notepad = Path::new("C:\\Windows\\notepad.exe");
         assert!(notepad.readable());
