@@ -502,14 +502,26 @@ pub trait PathExt {
     }
 }
 
-impl PathExt for Path {
-    fn access(&self, mode: AccessMode) -> io::Result<()> {
-        imp::access(self, mode)
+impl<P> PathExt for P
+where
+    P: AsRef<Path>,
+{
+    fn access(&self, mode: AccessMode) -> std::io::Result<()> {
+        imp::access(self.as_ref(), mode)
     }
 }
 
 #[test]
 fn amazing_test_suite() {
+    use std::path::PathBuf;
+
+    // the new impl works with PathBuf, and any other type which implies AsRef<Path>.
+    // for example, https://docs.rs/typed-path/latest/typed_path/struct.Path.html, which -> AsRef<OsStr> -> AsRef<Path>
+    let cargotoml = PathBuf::from("Cargo.toml");
+    assert!(cargotoml.access(AccessMode::EXISTS).is_ok());
+    assert!(cargotoml.access(AccessMode::READ).is_ok());
+    assert!(cargotoml.access(AccessMode::READ | AccessMode::WRITE).is_ok());
+
     let cargotoml = Path::new("Cargo.toml");
 
     assert!(cargotoml.access(AccessMode::EXISTS).is_ok());
